@@ -8,10 +8,11 @@
 
 1. C++ Compiler
 2. MPI Compiler
+3. CUDA Compiler
 
 **Modify Makefile**
 
-There are Makefiles for ALCF Theta (Intel KNL) and OLCF Summit (IBM POWER9) and TACC Frontera (Intel Cascade Lake) systems. You should use one of these to modify according to your system.
+There are Makefiles for Blue Waters (K20x) and OLCF Summit (V100) and TACC Frontera (Quadro RTX 5000) systems. You should use one of these to modify according to your system.
 
 ## Download Datasets
 
