@@ -20,6 +20,10 @@ float pixsize; //PIXEL SIZE
 float rhostart; //RHO START
 float raylength; //RAYLENGTH
 
+char *sinfile; //SINOGRAM FILE
+char *thefile; //THETA FILE
+char *outfile; //OUTPUT FILE
+
 int numiter;
 
 int spatindexing;
@@ -115,26 +119,26 @@ int main(int argc, char** argv){
   numthe = atoi(chartemp);
   chartemp = getenv("NUMRHO");
   numrho = atoi(chartemp);
-  chartemp = getenv("NUMX");
-  numx = atoi(chartemp);
-  chartemp = getenv("NUMY");
-  numy = atoi(chartemp);
+  //chartemp = getenv("NUMX");
+  numx = numrho;//atoi(chartemp);
+  //chartemp = getenv("NUMY");
+  numy = numrho;//atoi(chartemp);
 
-  chartemp = getenv("XSTART");
-  float xstart = atof(chartemp);
-  chartemp = getenv("YSTART");
-  float ystart = atof(chartemp);
+  //chartemp = getenv("XSTART");
+  float xstart = -numrho/2.0;//atof(chartemp);
+  //chartemp = getenv("YSTART");
+  float ystart = xstart;//atof(chartemp);
   chartemp = getenv("PIXSIZE");
   pixsize = atof(chartemp);
-  chartemp = getenv("RHOSTART");
-  rhostart = atof(chartemp);
-  chartemp = getenv("RAYLENGTH");
-  raylength = atof(chartemp);
+  //chartemp = getenv("RHOSTART");
+  rhostart = xstart;//atof(chartemp);
+  //chartemp = getenv("RAYLENGTH");
+  raylength = 2*numx;// atof(chartemp);
 
-  chartemp = getenv("SPATINDEXING");
-  spatindexing = atoi(chartemp);
-  chartemp = getenv("SPECINDEXING");
-  specindexing = atoi(chartemp);
+  //chartemp = getenv("SPATINDEXING");
+  spatindexing = 5;//atoi(chartemp);
+  //chartemp = getenv("SPECINDEXING");
+  specindexing = 5;//atoi(chartemp);
 
   chartemp = getenv("NUMITER");
   numiter = atoi(chartemp);
@@ -152,6 +156,10 @@ int main(int argc, char** argv){
   proj_buffsize = atoi(chartemp);
   chartemp = getenv("BACKBUFF");
   back_buffsize = atoi(chartemp);
+
+  sinfile = getenv("SINFILE");
+  thefile = getenv("THEFILE");
+  outfile = getenv("OUTFILE");
 
   //FIND NUMBER OF TILES
   numxtile = numx/spatsize;
@@ -217,6 +225,11 @@ int main(int argc, char** argv){
     printf("BACKPROJECTION BLOCK SIZE  : %d\n",back_blocksize);
     printf("PROJECTION BUFFER SIZE      : %d KB\n",proj_buffsize);
     printf("BACKPROJECTION BUFFER SIZE  : %d KB\n",back_buffsize);
+    printf("\n");
+    printf("SINOGRAM FILE : %s\n",sinfile);
+    printf("   THETA FILE : %s\n",thefile);
+    printf("  OUTPUT FILE : %s\n",outfile);
+    printf("\n");
     printf("\n");
   }
   proj_buffsize = proj_buffsize*1024/4;
@@ -301,9 +314,9 @@ int main(int argc, char** argv){
   int *pixstart = new int[numproc];
   int *raystart = new int[numproc];
   int myspattile = numspattile/numproc;
-  if(myid<(((float)numspattile)/numproc-myspattile)*numproc)myspattile++;
+  if(myid < numspattile-myspattile*numproc)myspattile++;
   int myspectile = numspectile/numproc;
-  if(myid<(((float)numspectile)/numproc-myspectile)*numproc)myspectile++;
+  if(myid < numspectile-myspectile*numproc)myspectile++;
   MPI_Allgather(&myspattile,1,MPI_INTEGER,numspats,1,MPI_INTEGER,MPI_COMM_WORLD);
   MPI_Allgather(&myspectile,1,MPI_INTEGER,numspecs,1,MPI_INTEGER,MPI_COMM_WORLD);
   spatstart[0] = 0;
@@ -373,6 +386,12 @@ int main(int argc, char** argv){
   fread(mestheta,sizeof(float),numthe,thetaf);
   fclose(thetaf);*/
 
+  float *mestheta = new float[numthe];
+  if(myid==0)printf("INPUT THETA DATA\n");
+  FILE *thetaf = fopen(thefile,"rb");
+  fread(mestheta,sizeof(float),numthe,thetaf);
+  fclose(thetaf);
+
   //PLACE RAYS
   complex<float> *raycoor = new complex<float>[mynumray];
   int *rayglobalind = new int[mynumray];
@@ -404,8 +423,8 @@ int main(int argc, char** argv){
     rayglobalind[ind] = theglobalind*numrtile*specsize+rhoglobalind;
     if(theglobalind<numthe && rhoglobalind<numrho){
       raymesind[ind] = theglobalind*numrho+rhoglobalind;
-      //raycoor[ind] = complex<float>(rho,mestheta[theglobalind]);
-      raycoor[ind] = complex<float>(rho,the);
+      raycoor[ind] = complex<float>(rho,mestheta[theglobalind]);
+      //raycoor[ind] = complex<float>(rho,the);
     }
     else{
       raycoor[ind].real(5*raylength);
@@ -1030,7 +1049,7 @@ int main(int argc, char** argv){
   numproj = 0;
   numback = 0;
 
-  if(myid==0)printf("SIMULATION STARTS\n");
+  /*if(myid==0)printf("SIMULATION STARTS\n");
   #pragma omp parallel for
   for(int n = 0; n < mynumpix; n++){
     obj[n] = 0;
@@ -1043,11 +1062,10 @@ int main(int argc, char** argv){
   }
   //SIMULATION
   projection(mes,obj);
-  if(myid==0)printf("SIMULATION ENDS\n");
-  /*if(myid==0)printf("INPUT MEASUREMENT DATA\n");
+  if(myid==0)printf("SIMULATION ENDS\n");*/
+  if(myid==0)printf("INPUT MEASUREMENT DATA\n");
   float *mesdata = new float[numrho*numthe];
-  //FILE *dataf = fopen("brain-2x-5000-5001.1s.spectral.11283x11283.data","rb");
-  FILE *dataf = fopen("/projects/sciteam/bavd/datasets/tomo_00001.1s.spectral.2Kx2K.data_float","rb");
+  FILE *dataf = fopen(sinfile,"rb");
   fread(mesdata,sizeof(float),numrho*numthe,dataf);
   fclose(dataf);
   #pragma omp parallel for
@@ -1055,8 +1073,8 @@ int main(int argc, char** argv){
     if(raymesind[k]>-1)mes[k] = mesdata[raymesind[k]];
     else mes[k] = 0;
   delete[] mesdata;
-  if(myid==0)printf("INPUT ENDS\n");*/
-  float *mesall = new float[numray];
+  if(myid==0)printf("INPUT ENDS\n");
+  /*float *mesall = new float[numray];
   #pragma omp parallel for
   for(int n = 0; n < numray; n++)
     mesall[n] = 0;
@@ -1069,11 +1087,11 @@ int main(int argc, char** argv){
     fwrite(mesall,sizeof(float),numray,mesf);
     fclose(mesf);
   }
-  delete[] mesall;
+  delete[] mesall;*/
   delete[] rayglobalind;
   delete[] raymesind;
   if(myid==0)printf("GRADIENT-DESCENT OPTIMIZATION\n");
-  FILE *resf = fopen("residual.txt","w");
+  //FILE *resf = fopen("residual.txt","w");
   //INITIALIZE OBJECT
   #pragma omp parallel for
   for(int n = 0; n < mynumpix; n++)
@@ -1087,83 +1105,83 @@ int main(int argc, char** argv){
     //FORWARD PROJECTION
     projection(ray,obj);
     //FIND RESIDUAL ERROR
-    //time = MPI_Wtime();
+    time = MPI_Wtime();
     subtract_kernel(res,ray,mes,mynumray);
-    //MPI_Barrier(MPI_COMM_WORLD);
-    //ctime = ctime + MPI_Wtime() - time;
+    MPI_Barrier(MPI_COMM_WORLD);
+    ctime = ctime + MPI_Wtime() - time;
     //FIND GRADIENT
     backprojection(gra,res);
-    //time = MPI_Wtime();
+    time = MPI_Wtime();
     float error = norm_kernel(res,mynumray);
     float gradnorm = norm_kernel(gra,mynumpix);
-    //MPI_Barrier(MPI_COMM_WORLD);
-    //ctime = ctime + MPI_Wtime() - time;
-    //time = MPI_Wtime();
+    MPI_Barrier(MPI_COMM_WORLD);
+    ctime = ctime + MPI_Wtime() - time;
+    time = MPI_Wtime();
     MPI_Allreduce(MPI_IN_PLACE,&error,1,MPI_FLOAT,MPI_SUM,MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE,&gradnorm,1,MPI_FLOAT,MPI_SUM,MPI_COMM_WORLD);
-    //MPI_Barrier(MPI_COMM_WORLD);
-    //wtime = wtime + MPI_Wtime() - time;
+    MPI_Barrier(MPI_COMM_WORLD);
+    wtime = wtime + MPI_Wtime() - time;
     if(myid==0)printf("iter: %d error: %e gradnorm: %e\n",0,error,gradnorm);
     //SAVE DIRECTION
-    //time = MPI_Wtime();
+    time = MPI_Wtime();
     copy_kernel(dir,gra,mynumpix);
     float oldgradnorm = gradnorm;
-    //MPI_Barrier(MPI_COMM_WORLD);
-    //ctime = ctime + MPI_Wtime() - time;
+    MPI_Barrier(MPI_COMM_WORLD);
+    ctime = ctime + MPI_Wtime() - time;
     //START ITERATIONS
     for(int iter = 1; iter <= numiter; iter++){
       //PROJECT DIRECTION
       projection(ray,dir);
       //FIND STEP SIZE
-      //time = MPI_Wtime();
+      time = MPI_Wtime();
       float temp1 = dot_kernel(res,ray,mynumray);
       float temp2 = norm_kernel(ray,mynumray);
-      //MPI_Barrier(MPI_COMM_WORLD);
-      //ctime = ctime + MPI_Wtime() - time;
-      //time = MPI_Wtime();
+      MPI_Barrier(MPI_COMM_WORLD);
+      ctime = ctime + MPI_Wtime() - time;
+      time = MPI_Wtime();
       MPI_Allreduce(MPI_IN_PLACE,&temp1,1,MPI_FLOAT,MPI_SUM,MPI_COMM_WORLD);
       MPI_Allreduce(MPI_IN_PLACE,&temp2,1,MPI_FLOAT,MPI_SUM,MPI_COMM_WORLD);
-      //MPI_Barrier(MPI_COMM_WORLD);
-      //wtime = wtime + MPI_Wtime() - time;
+      MPI_Barrier(MPI_COMM_WORLD);
+      wtime = wtime + MPI_Wtime() - time;
       //STEP SIZE
-      //time = MPI_Wtime();
+      time = MPI_Wtime();
       float alpha = temp1/temp2;
       saxpy_kernel(obj,obj,-1.0*alpha,dir,mynumpix);
-      //MPI_Barrier(MPI_COMM_WORLD);
-      //ctime = ctime + MPI_Wtime() - time;
+      MPI_Barrier(MPI_COMM_WORLD);
+      ctime = ctime + MPI_Wtime() - time;
       //FORWARD PROJECTION
       projection(ray,obj);
       //FIND RESIDUAL ERROR
-      //time = MPI_Wtime();
+      time = MPI_Wtime();
       subtract_kernel(res,ray,mes,mynumray);
-      //MPI_Barrier(MPI_COMM_WORLD);
-      //ctime = ctime + MPI_Wtime() - time;
+      MPI_Barrier(MPI_COMM_WORLD);
+      ctime = ctime + MPI_Wtime() - time;
       //FIND GRADIENT
       backprojection(gra,res);
-      //time = MPI_Wtime();
+      time = MPI_Wtime();
       float error = norm_kernel(res,mynumray);
       float gradnorm = norm_kernel(gra,mynumpix);
-      //MPI_Barrier(MPI_COMM_WORLD);
-      //ctime = ctime + MPI_Wtime() - time;
-      //time = MPI_Wtime();
+      MPI_Barrier(MPI_COMM_WORLD);
+      ctime = ctime + MPI_Wtime() - time;
+      time = MPI_Wtime();
       MPI_Allreduce(MPI_IN_PLACE,&error,1,MPI_FLOAT,MPI_SUM,MPI_COMM_WORLD);
       MPI_Allreduce(MPI_IN_PLACE,&gradnorm,1,MPI_FLOAT,MPI_SUM,MPI_COMM_WORLD);
-      //MPI_Barrier(MPI_COMM_WORLD);
-      //wtime = wtime + MPI_Wtime() - time;
+      MPI_Barrier(MPI_COMM_WORLD);
+      wtime = wtime + MPI_Wtime() - time;
       //UPDATE DIRECTION
-      //time = MPI_Wtime();
+      time = MPI_Wtime();
       if(myid==0)printf("iter: %d error: %e gradnorm: %e\n",iter,error,gradnorm);
-      fprintf(resf,"%e %e\n",error,gradnorm);
+      //fprintf(resf,"%e %e\n",error,gradnorm);
       float beta = gradnorm/oldgradnorm;
       //float beta = 0;
       oldgradnorm = gradnorm;
       saxpy_kernel(dir,gra,beta,dir,mynumpix);
-      //MPI_Barrier(MPI_COMM_WORLD);
-      //ctime = ctime + MPI_Wtime() - time;
+      MPI_Barrier(MPI_COMM_WORLD);
+      ctime = ctime + MPI_Wtime() - time;
     }
     MPI_Barrier(MPI_COMM_WORLD);
     rtime = MPI_Wtime()-rtime;
-    fclose(resf);
+    //fclose(resf);
 
     if(myid==0)printf("recon: %e proj: %e (%e %e %e) backproj: %e (%e %e %e) ctime: %e wtime: %e\n",rtime,ftime,fktime,aftime,frtime,btime,brtime,abtime,bktime,ctime,wtime);
 
@@ -1189,7 +1207,7 @@ int main(int argc, char** argv){
     objall[pixglobalind[n]] = obj[n];
   MPI_Allreduce(MPI_IN_PLACE,objall,numpix,MPI_FLOAT,MPI_SUM,MPI_COMM_WORLD);
   if(myid==0){
-    FILE *objf = fopen("object.bin","wb");
+    FILE *objf = fopen(outfile,"wb");
     fwrite(objall,sizeof(float),numpix,objf);
     fclose(objf);
   }

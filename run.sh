@@ -1,33 +1,23 @@
 #!/bin/bash
 
-export NUMTHE=750
-export NUMRHO=512
-#DOMAIN SIZE
-export NUMX=512
-export NUMY=512
 #DOMAIN INFORMATION
-export XSTART=-256
-export YSTART=-256
+export NUMTHE=360
+export NUMRHO=256
 export PIXSIZE=1
-export RHOSTART=-256
-export RAYLENGTH=1024
 #SOLVER DATA
-export NUMITER=50
+export NUMITER=24
 #TILE SIZE (MUST BE POWER OF TWO)
-export SPATSIZE=256
-export SPECSIZE=256
-#INDEXING
-export SPATINDEXING=5
-export SPECINDEXING=5
-# 1: CARTESIAN, NATURAL
-# 2: CARTESIAN, TRANSPOSED
-# 3: MORTON, NATURAL
-# 4: MORTON, TRANSPOSED
-# 5: HILBERT
-export PROJBLOCK=512
-export BACKBLOCK=512
-export PROJBUFF=48 #KB
-export BACKBUFF=48 #KB
+export SPATSIZE=128
+export SPECSIZE=128
+#BLOCK SIZE
+export PROJBLOCK=128
+export BACKBLOCK=128
+#BUFFER SIZE
+export PROJBUFF=8 #KB
+export BACKBUFF=8 #KB
+#I/O FILES
+export THEFILE=/gpfs/alpine/scratch/merth/csc362/MemXCT_datasets/ADS2_theta.bin
+export SINFILE=/gpfs/alpine/scratch/merth/csc362/MemXCT_datasets/ADS2_sinogram.bin
+export OUTFILE=/gpfs/alpine/scratch/merth/csc362/recon_ADS2.bin
 
-export OMP_NUM_THREADS=16
-aprun -n 4 -N 1 -cc depth -d $OMP_NUM_THREADS -j 2 ./ptycho
+jsrun -n1 -a1 -g1 -c7 -EOMP_NUM_THREADS=7 -r1 -bpacked:7 js_task_info ./memxct
