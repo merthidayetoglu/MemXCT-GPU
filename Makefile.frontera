@@ -5,9 +5,9 @@ CXXFLAGS = -std=c++11 -fopenmp
 OPTFLAGS = -O3 -xhost
 
 NVCC = nvcc
-NVCCFLAGS = -lineinfo -O3 -std=c++11 -gencode arch=compute_61,code=sm_61 -Xcompiler -fopenmp -Xptxas="-v"
+NVCCFLAGS = -lineinfo -O3 -std=c++11 -ccbin=mpicxx -gencode arch=compute_61,code=sm_61 -Xcompiler -fopenmp -Xptxas="-v"
 
-LD_FLAGS = -ccbin=mpicxx -Xcompiler -fopenmp
+LD_FLAGS = -fopenmp -L/opt/apps/cuda/10.1/lib64 -lcudart
 
 TARGETS = memxct
 OBJECTS = src/main.o src/raytrace.o src/kernels.o
