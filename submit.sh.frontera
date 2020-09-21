@@ -1,0 +1,3 @@
+#!/bin/bash
+
+idev -p rtx-dev -N 1 -m 30
