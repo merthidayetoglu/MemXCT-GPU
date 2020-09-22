@@ -5,7 +5,7 @@ CXXFLAGS = -std=c++11 -fopenmp
 OPTFLAGS = -O3 -xhost
 
 NVCC = nvcc
-NVCCFLAGS = -lineinfo -O3 -std=c++11 -ccbin=mpicxx -gencode arch=compute_61,code=sm_61 -Xcompiler -fopenmp -Xptxas="-v"
+NVCCFLAGS = -lineinfo -O3 -std=c++11 -ccbin=mpicxx -gencode arch=compute_75,code=sm_75 -Xcompiler -fopenmp -Xptxas="-v"
 
 LD_FLAGS = -fopenmp -L/opt/apps/cuda/10.1/lib64 -lcudart
 

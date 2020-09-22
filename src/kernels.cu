@@ -90,7 +90,7 @@ void setup_gpu(float **obj,float **gra, float **dir,float **mes,float **res,floa
   MPI_Comm_size(MPI_COMM_WORLD,&numproc);
   MPI_Comm_rank(MPI_COMM_WORLD,&myid);
 
-  int device = 0;//myid;///8;
+  int device = myid;///8;
   printf("myid: %d device: %d\n",myid,device);
   cudaSetDevice(device);
   if(myid==0){
@@ -203,10 +203,10 @@ void setup_gpu(float **obj,float **gra, float **dir,float **mes,float **res,floa
 }
 
 void projection(float *mes, float *obj){
-  //MPI_Barrier(MPI_COMM_WORLD);
-  //double timef = MPI_Wtime();
+  MPI_Barrier(MPI_COMM_WORLD);
+  double timef = MPI_Wtime();
   {
-    //double time = timef;
+    double time = timef;
     int blocksize = proj_blocksize;
     int numblocks = proj_numblocks;
     int buffsize = proj_buffsize;
@@ -216,60 +216,60 @@ void projection(float *mes, float *obj){
     short *buffindex = proj_buffindex_d;
     float *buffvalue = proj_buffvalue_d;
     cudaMemcpy(tomogram_d,obj,sizeof(float)*mynumpix,cudaMemcpyHostToDevice);
-  /*cudaEvent_t start, stop;
+  cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
-  cudaEventRecord(start);*/
+  cudaEventRecord(start);
     kernel_SpMV_buffered<<<numblocks,blocksize,sizeof(float)*buffsize>>>(raypart_d,tomogram_d,buffindex,buffvalue,raynumout,blockdispl,buffdispl,buffmap,buffsize);
-  /*cudaEventRecord(stop);
+  cudaEventRecord(stop);
   cudaEventSynchronize(stop);
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
-  fktime = fktime + milliseconds/1000;*/
+  fktime = fktime + milliseconds/1000;
     //cudaDeviceSynchronize();
     //MPI_Barrier(MPI_COMM_WORLD);
     //fktime = fktime + MPI_Wtime()-time;
   }
   {
-    //double time = MPI_Wtime();
+    double time = MPI_Wtime();
     cudaMemcpy(raypart,raypart_d,sizeof(float)*raynumout,cudaMemcpyDeviceToHost);
     MPI_Alltoallv(raypart,raysendcount,raysendstart,MPI_FLOAT,raybuff,rayrecvcount,rayrecvstart,MPI_FLOAT,MPI_COMM_WORLD);
     cudaMemcpy(raybuff_d,raybuff,sizeof(float)*raynuminc,cudaMemcpyHostToDevice);
-    //MPI_Barrier(MPI_COMM_WORLD);
-    //aftime = aftime + MPI_Wtime()-time;
+    MPI_Barrier(MPI_COMM_WORLD);
+    aftime = aftime + MPI_Wtime()-time;
   }
   {
-    //double time = MPI_Wtime();
+    double time = MPI_Wtime();
     kernel_SpReduce<<<(mynumray+255)/256,256>>>(sinogram_d,raybuff_d,rayraystart_d,rayrayind_d,mynumray);
     cudaMemcpy(mes,sinogram_d,sizeof(float)*mynumray,cudaMemcpyDeviceToHost);
-    //MPI_Barrier(MPI_COMM_WORLD);
-    //frtime = frtime + MPI_Wtime()-time;
+    MPI_Barrier(MPI_COMM_WORLD);
+    frtime = frtime + MPI_Wtime()-time;
   }
-  //ftime = ftime + MPI_Wtime()-timef;
+  ftime = ftime + MPI_Wtime()-timef;
   numproj++;
 }
 
 void backprojection(float *gra, float *res){
-  //MPI_Barrier(MPI_COMM_WORLD);
-  //double timeb = MPI_Wtime();
+  MPI_Barrier(MPI_COMM_WORLD);
+  double timeb = MPI_Wtime();
   {
-    //double time = timeb;
+    double time = timeb;
     cudaMemcpy(sinogram_d,res,sizeof(float)*mynumray,cudaMemcpyHostToDevice);
     kernel_SpGather<<<(raynuminc+255)/256,256>>>(raybuff_d,sinogram_d,rayindray_d,raynuminc);
-    //cudaDeviceSynchronize();
-    //MPI_Barrier(MPI_COMM_WORLD);
-    //brtime = brtime + MPI_Wtime()-time;
+    cudaDeviceSynchronize();
+    MPI_Barrier(MPI_COMM_WORLD);
+    brtime = brtime + MPI_Wtime()-time;
   }
   {
-    //double time = MPI_Wtime();
+    double time = MPI_Wtime();
     cudaMemcpy(raybuff,raybuff_d,sizeof(float)*raynuminc,cudaMemcpyDeviceToHost);
     MPI_Alltoallv(raybuff,rayrecvcount,rayrecvstart,MPI_FLOAT,raypart,raysendcount,raysendstart,MPI_FLOAT,MPI_COMM_WORLD);
     cudaMemcpy(raypart_d,raypart,sizeof(float)*raynumout,cudaMemcpyHostToDevice);
-    //MPI_Barrier(MPI_COMM_WORLD);
-    //abtime = abtime + MPI_Wtime()-time;
+    MPI_Barrier(MPI_COMM_WORLD);
+    abtime = abtime + MPI_Wtime()-time;
   }
   {
-    //double time = MPI_Wtime();
+    double time = MPI_Wtime();
     int blocksize = back_blocksize;
     int numblocks = back_numblocks;
     int buffsize = back_buffsize;
@@ -278,21 +278,21 @@ void backprojection(float *gra, float *res){
     int *buffmap = back_buffmap_d;
     short *buffindex = back_buffindex_d;
     float *buffvalue = back_buffvalue_d;
-  /*cudaEvent_t start, stop;
+  cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
-  cudaEventRecord(start);*/
+  cudaEventRecord(start);
     kernel_SpMV_buffered<<<numblocks,blocksize,sizeof(float)*buffsize>>>(tomogram_d,raypart_d,buffindex,buffvalue,mynumpix,blockdispl,buffdispl,buffmap,buffsize);
-  /*cudaEventRecord(stop);
+  cudaEventRecord(stop);
   cudaEventSynchronize(stop);
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
-  bktime = bktime + milliseconds/1000;*/
+  bktime = bktime + milliseconds/1000;
     cudaMemcpy(gra,tomogram_d,sizeof(float)*mynumpix,cudaMemcpyDeviceToHost);
     //MPI_Barrier(MPI_COMM_WORLD);
     //bktime = bktime + MPI_Wtime()-time;
   }
-  //btime = btime + MPI_Wtime()-timeb;
+  btime = btime + MPI_Wtime()-timeb;
   numback++;
 }
 
